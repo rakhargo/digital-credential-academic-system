@@ -2,73 +2,52 @@
 pragma solidity ^0.8.20;
 
 import {Script, console} from "forge-std/Script.sol";
-import {AcademicCredential} from "../src/AcademicCredential.sol";
+import {AcademicIdentitySystem} from "../src/AcademicIdentitySystem.sol";
 
 contract InteraksiSistem is Script {
-    // Kita pakai Private Key bawaan Anvil (Default)
-    // PK 0: 0xac09... (Kita anggap Admin/PDDikti)
-    uint256 adminPrivateKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
-    
-    // PK 1: 0x59c6... (Kita anggap Kampus UPI)
-    uint256 kampusPrivateKey = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d;
-    
-    // Alamat wallet dari PK di atas (untuk verifikasi di log)
-    address kampusAddress = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    // Aktor Sesuai Diagram
+    uint256 pddiktiKey = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80; // Admin
+    uint256 kampusKey = 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d;  // Issuer
+    uint256 mhsKey = 0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a;     // Holder (Rakha)
+
+    address kampusAddr = vm.addr(kampusKey);
+    address mhsAddr = vm.addr(mhsKey);
 
     function run() public {
-        // --- STEP 1: DEPLOY CONTRACT (Oleh Admin) ---
-        console.log("--- MULAI DEPLOYMENT ---");
-        
-        // Mulai sesi sebagai Admin
-        vm.startBroadcast(adminPrivateKey);
-        
-        AcademicCredential credentialSystem = new AcademicCredential();
-        console.log("Contract dideploy di alamat:", address(credentialSystem));
-        console.log("Admin PDDikti adalah:", credentialSystem.pddiktiAdmin());
-
-        // --- STEP 2: WHITELIST KAMPUS (Oleh Admin) ---
-        console.log("\n--- MENDAFTARKAN KAMPUS ---");
-        
-        credentialSystem.addIssuer(kampusAddress, "Universitas Pendidikan Indonesia");
-        console.log("Kampus UPI berhasil didaftarkan (Whitelist)");
-        
-        // Admin selesai tugas
+        // 1. DEPLOY SYSTEM (PDDIKTI)
+        vm.startBroadcast(pddiktiKey);
+        AcademicIdentitySystem system = new AcademicIdentitySystem();
+        system.addIssuer(kampusAddr); // Whitelist Kampus
         vm.stopBroadcast();
 
+        // --- ALUR DIMULAI (SESUAI GAMBAR) ---
 
-        // --- STEP 3: MENERBITKAN IJAZAH (Oleh Kampus) ---
-        console.log("\n--- PENERBITAN IJAZAH ---");
+        // LANGKAH 1: Mahasiswa sudah punya Wallet (mhsKey)
         
-        // Pura-puranya ini data JSON Mahasiswa yang sudah di-Hash
-        // (Nanti ini tugas Python backend, di sini kita simulasi saja)
-        bytes32 idIjazah = keccak256(abi.encodePacked("IJAZAH-UPI-2025-001"));
-        bytes32 hashDataMahasiswa = keccak256(abi.encodePacked("Rakha Dhifiargo | 2209489 | S1 Ilmu Komputer"));
-        
-        console.log("Mencoba menerbitkan ijazah untuk ID:", vm.toString(idIjazah));
-        
-        // Mulai sesi sebagai Kampus
-        vm.startBroadcast(kampusPrivateKey);
-
-        credentialSystem.issueCredential(idIjazah, hashDataMahasiswa);
-        
-        console.log("Sukses! Ijazah telah tercatat di Blockchain.");
-        
+        // LANGKAH 2 & 3: Mahasiswa Mendaftarkan DID & Metadata
+        vm.startBroadcast(mhsKey);
+        console.log("--- [Langkah 2] Register DID oleh Mahasiswa ---");
+        system.registerDID("did:ethr:rakha2025", "ipfs://metadata-rakha");
         vm.stopBroadcast();
 
+        // LANGKAH 4 & 5: (Simulasi Off-chain) Kampus membuat & tanda tangan VC
+        bytes32 vcID = keccak256("IJAZAH-001");
+        bytes32 signedVcHash = keccak256("Isi Ijazah yang sudah ditandatangani Kampus");
 
-        // --- STEP 4: VERIFIKASI DATA (Read Only) ---
-        console.log("\n--- CEK DATA DI BLOCKCHAIN ---");
+        // LANGKAH 6: Pencatatan di Blockchain oleh Issuer
+        vm.startBroadcast(kampusKey);
+        console.log("--- [Langkah 6] Pencatatan Hash VC oleh Kampus ---");
+        system.recordCredentialHash(vcID, signedVcHash, mhsAddr);
+        vm.stopBroadcast();
+
+        // LANGKAH 10: Verifikasi oleh Perusahaan (Verifier)
+        console.log("--- [Langkah 10] Verifikasi Akhir ---");
+        (bool isValid, address issuer, address holder) = system.verifyCredentialStatus(vcID);
         
-        (bytes32 contentHash, address issuer, uint256 timestamp, bool isValid) = credentialSystem.credentials(idIjazah);
-        
-        console.log("Issuer Terdaftar:", issuer);
-        console.log("Status Valid:", isValid);
-        console.log("Timestamp:", timestamp);
-        
-        if (issuer == kampusAddress && isValid) {
-            console.log("KESIMPULAN: Ijazah VALID dan diterbitkan oleh Kampus Resmi.");
+        if(isValid && holder == mhsAddr) {
+            console.log("HASIL: Ijazah Valid, DID Holder Cocok!");
         } else {
-            console.log("KESIMPULAN: Ijazah PALSU.");
+            console.log("HASIL: Ijazah Palsu!");
         }
     }
 }
