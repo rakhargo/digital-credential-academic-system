@@ -7,8 +7,8 @@ from eth_account.messages import encode_defunct
 RPC_URL = "http://127.0.0.1:8545"
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
 
-# (Alamat ini biasanya SAMA TERUS selama Anda pakai Anvil & Key yang sama)
-REGISTRY_CONTRACT_ADDRESS = "0xA15BB66138824a1c7167f5E85b957d04Dd34E468"
+# (Alamat ini biasanya SAMA TERUS selama pakai Anvil & Key yang sama)
+REGISTRY_CONTRACT_ADDRESS = "0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35"
 
 # Path ke file JSON hasil compile Foundry
 ARTIFACT_PATH = './out/SimpleDIDRegistry.sol/SimpleDIDRegistry.json'
@@ -26,7 +26,6 @@ def get_contract():
         artifact = json.load(f)
         abi = artifact['abi']
     
-    # Return contract instance yang siap pakai
     return w3.eth.contract(address=REGISTRY_CONTRACT_ADDRESS, abi=abi)
 
 # --- FUNGSI KRIPTOGRAFI OFF-CHAIN (Tetap Sama) ---
@@ -40,6 +39,11 @@ def verify_signature(data_dict, signature):
     json_str = json.dumps(data_dict, sort_keys=True)
     message = encode_defunct(text=json_str)
     return w3.eth.account.recover_message(message, signature=signature)
+
+def hash_json(data_dict):
+    """Menghitung Keccak256 Hash dari data JSON (Untuk Anchoring)"""
+    json_bytes = json.dumps(data_dict, sort_keys=True).encode('utf-8')
+    return Web3.keccak(json_bytes)
 
 # --- FUNGSI DB (Tetap Sama untuk Simpan Wallet Mahasiswa) ---
 def load_db(filename):

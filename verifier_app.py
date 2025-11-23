@@ -9,7 +9,7 @@ st.set_page_config(page_title="Verifier Portal", page_icon="🏦", layout="wide"
 contract = utils.get_contract()
 
 # --- UI HEADER ---
-st.title("🏦 Portal Verifikasi (Bank/HRD)")
+st.title("🏦 Portal Verifikasi (HR)")
 st.markdown("""
 Aplikasi ini digunakan untuk memverifikasi keaslian dokumen digital (Ijazah) 
 tanpa menghubungi Universitas penerbit secara langsung.
@@ -92,15 +92,35 @@ with col_result:
 
                     # LANGKAH 2: Verify Registry (On-Chain Blockchain)
                     # Panggil Smart Contract resolveDID
-                    is_active, org_name, _ = contract.functions.resolveDID(recovered_signer_addr).call()
-                    
-                    if is_active:
-                        st.success(f"✅ **Otoritas:** Issuer Terdaftar di Blockchain sebagai **'{org_name}'**.")
+                    is_active, is_verified, org_name, _ = contract.functions.resolveDID(recovered_signer_addr).call()
+    
+                    if is_active and is_verified:
+                        st.success(f"🔹 **Penerbit:** Terverifikasi Resmi sebagai '{org_name}'")
+                        
+                        # B. Cek Status Dokumen (Anchoring Check)
+                        # Hitung ulang hash dari data yang kita terima
+                        vc_hash_check = utils.hash_json(vc_content)
+                        st.code(f"VC Hash: {vc_hash_check.hex()}", language="text")
+                        
+                        # Panggil Smart Contract
+                        exists, is_revoked, real_issuer = contract.functions.verifyCredentialStatus(vc_hash_check).call()
+                        
+                        if is_revoked:
+                            st.error("🛑 **STATUS: DICABUT (REVOKED)!**")
+                            st.error("Dokumen ini sudah dinyatakan TIDAK BERLAKU oleh penerbit.")
+                            all_passed = False
+                        elif not exists:
+                            st.warning("🔸 **Status: Unregistered (Off-Chain Only)**")
+                            st.write("Dokumen ini valid secara kriptografi, tapi hash-nya tidak ditemukan di Blockchain.")
+                        else:
+                            st.success("✅ **Status: TERDAFTAR AKTIF (Anchored)**")
+                            st.write("Dokumen asli dan tercatat di buku besar Blockchain.")
+                            
                     else:
-                        st.error("❌ **Otoritas:** Issuer TIDAK TERDAFTAR di Blockchain Registry.")
-                        st.warning("Hati-hati: Penanda tangan mungkin membuat signature sendiri tapi bukan Kampus resmi.")
+                        st.error("❌ **Penerbit:** TIDAK TERDAFTAR / ILEGAL.")
                         all_passed = False
-            
+
+
             st.divider()
             if all_passed:
                 st.balloons()
