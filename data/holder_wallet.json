@@ -1,0 +1,31 @@
+{
+    "credentials": [
+        {
+            "credential": {
+                "@context": [
+                    "https://www.w3.org/2018/credentials/v1"
+                ],
+                "id": "urn:uuid:265bdb0a-efc3-456e-a06f-399a0e12aaf4",
+                "type": [
+                    "VerifiableCredential",
+                    "UniversityDegreeCredential"
+                ],
+                "issuer": "did:ethr:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+                "issuanceDate": "2025-11-24T02:40:12.890096+00:00",
+                "credentialSubject": {
+                    "id": "did:ethr:0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+                    "data": {
+                        "name": "Rakha",
+                        "degree": "Sarjana Komputer (S.Kom)",
+                        "university": "Universitas Pendidikan Indonesia"
+                    }
+                }
+            },
+            "proof": {
+                "type": "EcdsaSecp256k1Signature2019",
+                "verificationMethod": "did:ethr:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266#controller",
+                "jws": "03190d5c48b504e55eb39ad47dcf5fb082204f1d694d069552ecc98f6b5c51652aceb99b7f22d472f064da8fbeb1b2dc86264e57f356a2bc06e00cf2e798d7eb1b"
+            }
+        }
+    ]
+}

@@ -44,7 +44,7 @@ contract SimpleDIDRegistry {
             controller: msg.sender,
             metadata: _name,
             active: true,
-            isVerified: false, // Default Unverified
+            isVerified: false,
             registeredAt: block.timestamp
         });
         emit DIDRegistered(msg.sender, _name);

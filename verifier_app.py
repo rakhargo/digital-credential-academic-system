@@ -39,8 +39,6 @@ with col_result:
             # Parsing JSON
             token_data = json.loads(json_input)
             
-            # Deteksi Tipe Dokumen (VP atau VC langsung)
-            # Skenario Holder App menghasilkan VP (Verifiable Presentation)
             if "presentation" in token_data:
                 credentials = token_data['presentation']['verifiableCredential']
                 holder_did = token_data['presentation']['holder']
@@ -57,8 +55,6 @@ with col_result:
             all_passed = True
             
             for i, vc_wrapper in enumerate(credentials):
-                # Struktur VC dari Holder App bisa dibungkus atau raw, kita normalisasi
-                # Di utils.py sign_data membungkus jadi {"credential": ..., "proof": ...}
                 if "credential" in vc_wrapper:
                     vc_content = vc_wrapper['credential']
                     vc_proof = vc_wrapper['proof']

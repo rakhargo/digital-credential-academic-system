@@ -10,6 +10,10 @@ ISSUER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7b
 ISSUER_ADDRESS = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 ISSUER_DID = f"did:ethr:{ISSUER_ADDRESS}"
 
+# AKUN ADMIN (anvil #9)
+ADMIN_PRIVATE_KEY = "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
+ADMIN_ADDRESS = "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720"
+
 contract = utils.get_contract()
 if not contract:
     st.error("Gagal load contract. Cek utils.py!")
@@ -43,12 +47,11 @@ try:
                 utils.w3.eth.send_raw_transaction(utils.w3.eth.account.sign_transaction(tx, ISSUER_PRIVATE_KEY).raw_transaction)
                 st.rerun()
         elif not is_verified:
-            # CHEAT BUTTON: Verifikasi diri sendiri (Khusus Demo Tugas)
             if st.button("👑 Self-Verify (Simulasi Admin)"):
                 tx = contract.functions.verifyIssuer(ISSUER_ADDRESS).build_transaction({ # harusnya dari admin
-                    'from': ISSUER_ADDRESS, 'nonce': utils.w3.eth.get_transaction_count(ISSUER_ADDRESS), 'gas': 1000000, 'gasPrice': utils.w3.to_wei('1', 'gwei')
+                    'from': ADMIN_ADDRESS, 'nonce': utils.w3.eth.get_transaction_count(ADMIN_ADDRESS), 'gas': 1000000, 'gasPrice': utils.w3.to_wei('1', 'gwei')
                 })
-                utils.w3.eth.send_raw_transaction(utils.w3.eth.account.sign_transaction(tx, ISSUER_PRIVATE_KEY).raw_transaction)
+                utils.w3.eth.send_raw_transaction(utils.w3.eth.account.sign_transaction(tx, ADMIN_PRIVATE_KEY).raw_transaction)
                 st.success("Akun Terverifikasi!")
                 st.rerun()
 except Exception as e:
