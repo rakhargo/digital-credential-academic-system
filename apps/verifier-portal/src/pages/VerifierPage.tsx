@@ -1,36 +1,49 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import VerifierPortal from '../components/VerifierPortal';
 import BlockExplorer from '../components/BlockExplorer';
-import { INITIAL_BLOCKCHAIN, BlockData } from '../utils/constants';
+import { useBlockchain } from '../hooks/useBlockchain'; // Import Hook kita
 
 const VerifierPage: React.FC = () => {
-  const [activeRole] = useState('verifier');
-  const navigate = useNavigate();
-  const [blockchain] = useState<BlockData[]>(INITIAL_BLOCKCHAIN);
+  // Panggil Hook Blockchain
+  const { account, verifyIssuerOnChain, logs } = useBlockchain();
+  
+  // State untuk hasil verifikasi
+  const [verificationResult, setResult] = useState<string>("");
 
-  const setActiveRole = (role: string) => {
-    navigate(`/${role}`);
+  // Fungsi yang dipanggil saat tombol "Verifikasi" diklik di component anak
+  const handleVerify = async (jsonInput: string) => {
+    try {
+      const data = JSON.parse(jsonInput);
+      const issuerAddress = data.credential.issuer.split(":")[2]; // Ambil address dari DID
+      
+      const status = await verifyIssuerOnChain(issuerAddress);
+      
+      if (status && status.isVerified) {
+        setResult(`✅ VALID: Penerbit adalah ${status.name} (Terverifikasi)`);
+      } else {
+        setResult("❌ INVALID: Penerbit tidak terdaftar di Blockchain.");
+      }
+    } catch (e) {
+      setResult("❌ Error: Format JSON salah.");
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
-
-      <main className="max-w-6xl mx-auto p-6">
-        <div className="space-y-4">
-             
-          <div className="bg-gradient-to-r from-teal-600 to-lime-600 text-white p-10 rounded-xl shadow-2xl">
-            <h1 className="text-4xl font-extrabold mb-2">
-              Verifier (Perusahaan/HRD)
-            </h1>
-            <p className="text-lg">
-               Memverifikasi keaslian ijazah dengan mencocokkan hash pada dokumen JSON dengan data yang ada di Blockchain.
-            </p>
-          </div>
-          <VerifierPortal blockchain={blockchain} />
+      <main className="max-w-6xl mx-auto p-6 space-y-4">
+        
+        {/* Header */}
+        <div className="bg-gradient-to-r from-teal-600 to-lime-600 text-white p-10 rounded-xl shadow-2xl">
+          <h1 className="text-4xl font-extrabold mb-2">Verifier (Perusahaan/HRD)</h1>
+          <p className="text-lg">Connected Wallet: {account || "Not Connected"}</p>
         </div>
 
-        <BlockExplorer data={blockchain} />
+        {/* Portal Input */}
+        <VerifierPortal onVerify={handleVerify} resultMessage={verificationResult} />
+
+        {/* Embedded Explorer (Real Data) */}
+        <BlockExplorer data={logs} />
+        
       </main>
     </div>
   );

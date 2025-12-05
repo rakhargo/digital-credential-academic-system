@@ -16,14 +16,15 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue }) => {
   });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    setTimeout(() => {
-      onIssue(formData);
-      setIsProcessing(false);
-      setFormData({ name: '', nim: '', program: 'Teknik Informatika', gpa: '', graduationDate: '' });
-    }, 2000);
+    
+    // Langsung panggil fungsi parent (yang akan memicu MetaMask)
+    await onIssue(formData);
+    
+    setIsProcessing(false);
+    setFormData({ name: '', nim: '', program: 'Teknik Informatika', gpa: '', graduationDate: '' });
   };
 
   return (
