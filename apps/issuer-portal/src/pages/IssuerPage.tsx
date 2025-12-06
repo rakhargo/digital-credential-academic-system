@@ -17,7 +17,7 @@ const IssuerPage: React.FC = () => {
     isVerified, isActive,
     issueCredentialOnChain, 
     registerCampus,
-    refreshStatus, debugData
+    resolveHolder
   } = useBlockchain(); // Tidak perlu ambil disconnectWallet lagi
   
   const [blockchain, setBlockchain] = useState<BlockData[]>([]);
@@ -34,39 +34,80 @@ const IssuerPage: React.FC = () => {
   const handleIssueCredential = async (formData: FormData) => {
     if (!account) return alert("Konek wallet dulu!");
     
-    // 1. Buat Hash
+    // 1. Persiapan Data VC
+    // (Dalam real case, ini harus ditandatangani EIP-712/JWT off-chain)
+    const vcPayload = {
+      "@context": ["https://www.w3.org/2018/credentials/v1"],
+      "type": ["VerifiableCredential"],
+      "issuer": `did:ethr:${account}`,
+      "issuanceDate": new Date().toISOString(),
+      "credentialSubject": { ...formData },
+      "proof": { "jws": "dummy_signature_for_demo" } 
+    };
+
+    // 2. Buat Hash untuk Blockchain
     const dataString = JSON.stringify(formData);
     const vcHash = ethers.keccak256(ethers.toUtf8Bytes(dataString));
     
-    // 2. Kirim ke Blockchain
+    // 3. Catat di Blockchain (Anchoring)
     const txHash = await issueCredentialOnChain(vcHash);
 
     if (txHash) {
-      // 3. Update UI
-      const newCredential: Credential = {
-        id: `vc:${Date.now()}`,
-        degree: `S1 - ${formData.program}`,
-        issuer: "Universitas Indonesia",
-        issuanceDate: new Date().toISOString().split('T')[0],
-        credentialSubject: { ...formData },
-        hash: vcHash,
-        proof: { signature: "SignedByMetaMask" }
-      };
-
+      // 4. Update Tampilan Block Explorer (Lokal)
       const newBlock: BlockData = {
         blockId: blockchain.length + 100,
         txHash: txHash,
         vcHash: vcHash,
         did: `did:ethr:${account}`,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        status: "Confirmed"
+        timestamp: new Date().toISOString(),
+        status: "Anchored"
       };
-
-      setIssuedCredentials([newCredential, ...issuedCredentials]);
       setBlockchain([newBlock, ...blockchain]);
-      
-      alert("✅ Sukses! Ijazah tercatat di Blockchain.");
+
+      // --- LOGIKA PENGIRIMAN ---
+      // Asumsi: Input NIM di form kita anggap sebagai Wallet Address Mahasiswa untuk demo
+      // (Nanti di form pastikan inputnya alamat valid 0x...)
+      const targetAddress = formData.nim; 
+
+      if (ethers.isAddress(targetAddress)) {
+          alert(`Mencari Service Endpoint untuk ${targetAddress}...`);
+          const holder = await resolveHolder(targetAddress);
+
+          if (holder && holder.endpoint) {
+              // KASUS A: Mahasiswa punya Server (Endpoint)
+              try {
+                  console.log(`Mengirim ke ${holder.endpoint}...`);
+                  await fetch(holder.endpoint, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(vcPayload)
+                  });
+                  alert(`✅ SUKSES! Ijazah terkirim otomatis ke Inbox Mahasiswa (${holder.endpoint})`);
+              } catch (e) {
+                  alert("⚠️ Gagal kirim ke endpoint (Server mati?). Download manual saja.");
+                  downloadJSON(vcPayload);
+              }
+          } else {
+              // KASUS B: Mahasiswa tidak punya Endpoint -> Download Manual
+              alert("⚠️ Mahasiswa tidak memiliki Service Endpoint. File JSON akan didownload.");
+              downloadJSON(vcPayload);
+          }
+      } else {
+          // Fallback jika input bukan address
+          alert("NIM bukan alamat wallet valid. Download JSON manual.");
+          downloadJSON(vcPayload);
+      }
     }
+  };
+
+  // Helper: Download File
+  const downloadJSON = (data: any) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `credential-${Date.now()}.json`;
+    a.click();
   };
 
   // --- TAMPILAN 1: BELUM KONEK ---

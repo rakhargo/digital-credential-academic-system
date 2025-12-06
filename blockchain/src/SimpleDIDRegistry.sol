@@ -6,7 +6,8 @@ contract SimpleDIDRegistry {
     struct DIDDocument {
         string didURI;
         address controller;
-        string metadata;     
+        string metadata;
+        string serviceEndpoint;     
         bool active;
         bool isVerified;     
         uint256 registeredAt;
@@ -38,11 +39,12 @@ contract SimpleDIDRegistry {
     }
 
     // 1. DAFTAR DID
-    function registerDID(string memory _didURI, string memory _name) external {
+    function registerDID(string memory _didURI, string memory _name, string memory _endpoint) external {
         dids[msg.sender] = DIDDocument({
             didURI: _didURI,
             controller: msg.sender,
             metadata: _name,
+            serviceEndpoint: _endpoint,
             active: true,
             isVerified: false,
             registeredAt: block.timestamp
@@ -76,9 +78,9 @@ contract SimpleDIDRegistry {
     }
 
     // 5. CEK STATUS (View)
-    function resolveDID(address _issuer) external view returns (bool, bool, string memory, string memory) {
+    function resolveDID(address _issuer) external view returns (bool, bool, string memory, string memory, string memory) {
         DIDDocument memory doc = dids[_issuer];
-        return (doc.active, doc.isVerified, doc.metadata, doc.didURI);
+        return (doc.active, doc.isVerified, doc.metadata, doc.didURI, doc.serviceEndpoint);
     }
 
     function verifyCredentialStatus(bytes32 _vcHash) external view returns (bool exists, bool isRevoked, address issuer) {

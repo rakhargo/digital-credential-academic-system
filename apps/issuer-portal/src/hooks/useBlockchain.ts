@@ -90,6 +90,25 @@ export const useBlockchain = () => {
     }
   };
 
+  const resolveHolder = async (holderAddress: string) => {
+    if (!contract) return null;
+    try {
+      console.log("🔍 Looking up Holder:", holderAddress);
+      const data = await contract.resolveDID(holderAddress);
+      
+      // Data dari Smart Contract baru:
+      // [0]: active, [1]: verified, [2]: name, [3]: didURI, [4]: serviceEndpoint
+      return {
+        isActive: data[0],
+        name: data[2],
+        endpoint: data[4]
+      };
+    } catch (e) {
+      console.error("Gagal resolve holder:", e);
+      return null;
+    }
+  };
+
   // --- 1. FUNGSI CONNECT (Manual Trigger) ---
   const connectWallet = async () => {
     if (window.ethereum) {
@@ -171,7 +190,7 @@ export const useBlockchain = () => {
 
       // KALAU BELUM, BARU DAFTAR
       console.log("Mengirim transaksi registerDID...");
-      const tx = await contract.registerDID(`did:ethr:${account}`, name);
+      const tx = await contract.registerDID(`did:ethr:${account}`, name, "");
       console.log("Tx Hash:", tx.hash);
       
       await tx.wait();
@@ -213,7 +232,8 @@ export const useBlockchain = () => {
     isActive,
     refreshStatus,
     debugData,
-    registerCampus, 
+    registerCampus,
+    resolveHolder, 
     issueCredentialOnChain 
   };
 };
