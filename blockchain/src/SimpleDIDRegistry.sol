@@ -13,7 +13,6 @@ contract SimpleDIDRegistry {
         uint256 registeredAt;
     }
 
-    // Status untuk setiap Ijazah (Hash)
     struct CredentialStatus {
         address issuer;
         uint256 issuedAt;
@@ -30,7 +29,7 @@ contract SimpleDIDRegistry {
     event CredentialRevoked(bytes32 indexed vcHash, string reason);
 
     modifier onlyVerifiedIssuer() {
-        require(dids[msg.sender].isVerified, "Hanya Kampus Terverifikasi (Centang Biru) yg boleh!");
+        require(dids[msg.sender].isVerified, "Hanya Kampus Terverifikasi yang boleh!");
         _;
     }
 

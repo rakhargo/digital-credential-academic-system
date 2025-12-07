@@ -1,26 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-// Pastikan file JSON ABI ada di folder utils holder juga
 import RegistryArtifact from '../utils/SimpleDIDRegistry.json'; 
 
-// ALAMAT KONTRAK (Harus sama dengan Issuer)
-const CONTRACT_ADDRESS = "0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35"; 
+const CONTRACT_ADDRESS = "0xDd8fbECC649B86c6228BDCe59F1FA4B51F2F4942"; 
 
 export const useHolder = () => {
   const [account, setAccount] = useState<string>("");
   const [isRegistered, setIsRegistered] = useState(false);
   const [registeredData, setRegisteredData] = useState<any>(null);
 
-  // --- CEK STATUS ---
+  // --- FUNGSI RESET / DISCONNECT ---
+  const disconnect = useCallback(() => {
+    setAccount("");
+    setIsRegistered(false);
+    localStorage.removeItem('isHolderConnected');
+  }, []);
+
+  // --- CEK REGISTRASI (BLOCKCHAIN) ---
   const checkRegistration = useCallback(async (userAddr: string) => {
     if (!window.ethereum) return;
+    // Gunakan Provider (Read-Only) cukup untuk cek status
     const provider = new ethers.BrowserProvider(window.ethereum);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, RegistryArtifact.abi, provider);
 
     try {
       const data = await contract.resolveDID(userAddr);
-      // data[0] = isActive
-      setIsRegistered(data[0]);
+      setIsRegistered(data[0]); // data[0] is active
       
       if (data[0]) {
         setRegisteredData({
@@ -29,35 +34,91 @@ export const useHolder = () => {
         });
       }
     } catch (e) {
-      console.log("Belum terdaftar di blockchain");
+      console.log("Status: Belum terdaftar di blockchain");
     }
   }, []);
 
-  // --- CONNECT ---
+  // --- CONNECT WALLET (Manual Trigger) ---
   const connectWallet = async () => {
     if (window.ethereum) {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
+
+        try {
+            await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xaa36a7' }], // Chain ID Sepolia (11155111) dalam Hex
+            });
+        } catch (switchError: any) {
+            // Jika Sepolia belum ada di MetaMask user (Jarang terjadi, tapi jaga-jaga)
+            if (switchError.code === 4902) {
+            alert("Tolong tambahkan network Sepolia ke MetaMask Anda!");
+            }
+        }
+        
         const accounts = await provider.send("eth_requestAccounts", []);
-        setAccount(accounts[0]);
-        checkRegistration(accounts[0]);
+        
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          // SIMPAN FLAG LOGIN
+          localStorage.setItem('isHolderConnected', 'true');
+          checkRegistration(accounts[0]);
+        }
       } catch (e) {
-        alert("Gagal connect");
+        alert("Gagal connect wallet");
       }
     } else {
       alert("Install MetaMask!");
     }
   };
 
-  // --- REGISTER FUNCTION ---
+  // --- AUTO CONNECT (Saat Refresh) ---
+  useEffect(() => {
+    const autoConnect = async () => {
+      // Cek apakah user sebelumnya sudah login?
+      const shouldConnect = localStorage.getItem('isHolderConnected') === 'true';
+      
+      if (shouldConnect && window.ethereum) {
+        try {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          // Cek permission saja tanpa popup
+          const accounts = await provider.send("eth_accounts", []);
+          
+          if (accounts.length > 0) {
+            setAccount(accounts[0]);
+            checkRegistration(accounts[0]);
+          } else {
+            disconnect(); // Izin dicabut di metamask
+          }
+        } catch (e) {
+          disconnect();
+        }
+      }
+    };
+    autoConnect();
+  }, [checkRegistration, disconnect]);
+
+  // --- LISTENER PERUBAHAN AKUN ---
+  useEffect(() => {
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', (accounts: string[]) => {
+        if (accounts.length > 0) {
+          setAccount(accounts[0]);
+          checkRegistration(accounts[0]);
+        } else {
+          disconnect();
+        }
+      });
+    }
+  }, [checkRegistration, disconnect]);
+
+  // --- FUNGSI LAINNYA (Register & VP) TETAP SAMA ---
   const registerHolderDID = async (name: string, endpoint: string) => {
     if (!account) return;
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, RegistryArtifact.abi, signer);
-
-      console.log(`Mendaftarkan: ${name} ke ${endpoint}`);
       
       const tx = await contract.registerDID(`did:ethr:${account}`, name, endpoint);
       await tx.wait();
@@ -65,12 +126,10 @@ export const useHolder = () => {
       alert("✅ Identitas Berhasil Didaftarkan!");
       window.location.reload();
     } catch (e: any) {
-      console.error(e);
       alert("Gagal Register: " + e.message);
     }
   };
 
-  // --- CREATE VP (Tetap Sama) ---
   const createVerifiablePresentation = async (vcData: any) => {
     if (!account) return alert("Connect wallet dulu!");
     try {
@@ -98,17 +157,13 @@ export const useHolder = () => {
       };
       return JSON.stringify(finalVP, null, 2);
     } catch (e: any) {
-      alert("Gagal sign VP: " + e.message);
+      console.error(e);
       return null;
     }
   };
 
   return { 
-    account, 
-    connectWallet, 
-    isRegistered,     // Status terdaftar?
-    registeredData,   // Data nama & endpoint
-    registerHolderDID, // Fungsi daftar
-    createVerifiablePresentation 
+    account, connectWallet, isRegistered, registeredData, 
+    registerHolderDID, createVerifiablePresentation 
   };
 };

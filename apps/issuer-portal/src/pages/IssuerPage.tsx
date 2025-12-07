@@ -8,17 +8,15 @@ import { useBlockchain } from '../hooks/useBlockchain';
 import { BlockData, Credential, FormData } from '../utils/constants';
 
 const IssuerPage: React.FC = () => {
-  const navigate = useNavigate();
-  
   // Panggil Hook Blockchain
   const { 
     account, 
+    isLoading, // <--- PENTING
     connectWallet, 
+    disconnectWallet, // <--- PENTING
     isVerified, isActive,
-    issueCredentialOnChain, 
-    registerCampus,
-    resolveHolder
-  } = useBlockchain(); // Tidak perlu ambil disconnectWallet lagi
+    issueCredentialOnChain, registerCampus, resolveHolder 
+  } = useBlockchain();
   
   const [blockchain, setBlockchain] = useState<BlockData[]>([]);
   const [issuedCredentials, setIssuedCredentials] = useState<Credential[]>([]);
@@ -34,26 +32,15 @@ const IssuerPage: React.FC = () => {
   const handleIssueCredential = async (formData: FormData) => {
     if (!account) return alert("Konek wallet dulu!");
     
-    // 1. Persiapan Data VC
-    // (Dalam real case, ini harus ditandatangani EIP-712/JWT off-chain)
-    const vcPayload = {
-      "@context": ["https://www.w3.org/2018/credentials/v1"],
-      "type": ["VerifiableCredential"],
-      "issuer": `did:ethr:${account}`,
-      "issuanceDate": new Date().toISOString(),
-      "credentialSubject": { ...formData },
-      "proof": { "jws": "dummy_signature_for_demo" } 
-    };
-
-    // 2. Buat Hash untuk Blockchain
+    // 1. Buat Hash untuk Blockchain
     const dataString = JSON.stringify(formData);
     const vcHash = ethers.keccak256(ethers.toUtf8Bytes(dataString));
     
-    // 3. Catat di Blockchain (Anchoring)
+    // 2. Catat di Blockchain (Anchoring) - MetaMask Pop-up 1
     const txHash = await issueCredentialOnChain(vcHash);
 
     if (txHash) {
-      // 4. Update Tampilan Block Explorer (Lokal)
+      // Update Explorer Lokal
       const newBlock: BlockData = {
         blockId: blockchain.length + 100,
         txHash: txHash,
@@ -64,9 +51,36 @@ const IssuerPage: React.FC = () => {
       };
       setBlockchain([newBlock, ...blockchain]);
 
-      // --- LOGIKA PENGIRIMAN ---
-      // Asumsi: Input NIM di form kita anggap sebagai Wallet Address Mahasiswa untuk demo
-      // (Nanti di form pastikan inputnya alamat valid 0x...)
+      // === PERBAIKAN UTAMA DISINI ===
+      
+      // 3. Signing VC agar Unik (MetaMask Pop-up 2)
+      // Kita sign hash-nya saja biar cepat
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      let signature = "error_signing";
+      try {
+          // Ini membuat signature yang UNIK berdasarkan konten data
+          signature = await signer.signMessage(vcHash); 
+      } catch (e) {
+          console.log("User reject signing, pakai timestamp sebagai fallback");
+          signature = `fallback_sig_${Date.now()}`;
+      }
+
+      // 4. Siapkan Data VC dengan Signature Unik
+      const vcPayload = {
+        "@context": ["https://www.w3.org/2018/credentials/v1"],
+        "type": ["VerifiableCredential"],
+        "issuer": `did:ethr:${account}`,
+        "issuanceDate": new Date().toISOString(),
+        "credentialSubject": { ...formData },
+        "proof": { 
+            "type": "EthereumPersonalSignature2019",
+            "jws": signature
+        } 
+      };
+
+      // 5. LOGIKA PENGIRIMAN (Sama seperti sebelumnya)
       const targetAddress = formData.nim; 
 
       if (ethers.isAddress(targetAddress)) {
@@ -110,6 +124,14 @@ const IssuerPage: React.FC = () => {
     a.click();
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+  
   // --- TAMPILAN 1: BELUM KONEK ---
   if (!account) {
     return (
