@@ -152,7 +152,7 @@ npm install
 npm run dev
 ```
 
-![Verifier App](./verifier.png)
+![Verifier App](./Verifier.png)
 
 ## 💡 Kesimpulan
 
