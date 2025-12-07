@@ -1,5 +1,7 @@
 # Digital Credential Academic System
 
+![Cover Project](./cover.png)
+
 Proyek ini membangun ekosistem dokumen akademik digital (seperti ijazah dan transkrip) yang aman, resmi, dan mudah diverifikasi. Layaknya ijazah fisik yang memiliki stempel basah, sistem ini memberikan "stempel digital" dari Universitas dan Kemendikbud (PDDikti) yang tidak bisa dipalsukan.
 
 Mahasiswa dapat menyimpan ijazah ini di dompet digital (aplikasi) mereka sendiri. Saat melamar kerja, perusahaan dapat memverifikasi keaslian ijazah tersebut dalam hitungan detik tanpa perlu menghubungi pihak kampus secara manual berkat teknologi Blockchain yang menjamin data valid dan transparan.
@@ -90,7 +92,7 @@ Sistem ini bertujuan untuk:
 
 ## 🚀 Cara Menjalankan Program
 
-Pastikan Anda sudah menginstall **Node.js**, **Foundry**, dan **Git**.
+Pastikan sudah menginstall **Node.js**, **Foundry**, dan **Git**.
 
 ### 0. Persiapan Blockchain (Wajib dijalankan pertama)
 
@@ -125,7 +127,7 @@ npm install react-router-dom lucide-react ethers
 npm run dev
 ```
 
-![Logo Proyek](./issuer.png)
+![Issuer App](./issuer.png)
 
 ### 3. Holder Wallet
 
@@ -137,7 +139,7 @@ npm install react-router-dom lucide-react ethers
 npm run dev
 ```
 
-![Logo Proyek](./holder.png)
+![Holder App](./holder.png)
 
 ### 4. Verifier App
 
@@ -149,7 +151,7 @@ npm install
 npm run dev
 ```
 
-![Logo Proyek](./verifier.png)
+![Verifier App](./verifier.png)
 
 ## 💡 Kesimpulan
 
