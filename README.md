@@ -6,9 +6,6 @@ Proyek ini membangun **ekosistem dokumen akademik digital** (seperti ijazah dan 
 
 Mahasiswa dapat menyimpan ijazah ini di **dompet digital** (aplikasi) mereka sendiri. Saat melamar kerja, perusahaan dapat **memverifikasi keaslian ijazah** tersebut dalam hitungan detik **tanpa perlu menghubungi pihak kampus** secara manual berkat **teknologi Blockchain** yang menjamin data valid dan transparan.
 
----
-
-**Apakah Anda ingin saya buatkan diagram alur (flowchart) sederhana mengenai cara kerja verifikasi dokumen ini?**
 
 ## 📑 Daftar Isi
 
