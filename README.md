@@ -2,9 +2,13 @@
 
 ![Cover Project](./cover.png)
 
-Proyek ini membangun ekosistem dokumen akademik digital (seperti ijazah dan transkrip) yang aman, resmi, dan mudah diverifikasi. Layaknya ijazah fisik yang memiliki stempel basah, sistem ini memberikan "stempel digital" dari Universitas dan Kemendikbud (PDDikti) yang tidak bisa dipalsukan.
+Proyek ini membangun **ekosistem dokumen akademik digital** (seperti ijazah dan transkrip) yang **aman, resmi, dan mudah diverifikasi**. Layaknya ijazah fisik yang memiliki stempel basah, sistem ini memberikan **"stempel digital" dari Universitas dan Kemendikbud (PDDikti)** yang **tidak bisa dipalsukan**.
 
-Mahasiswa dapat menyimpan ijazah ini di dompet digital (aplikasi) mereka sendiri. Saat melamar kerja, perusahaan dapat memverifikasi keaslian ijazah tersebut dalam hitungan detik tanpa perlu menghubungi pihak kampus secara manual berkat teknologi Blockchain yang menjamin data valid dan transparan.
+Mahasiswa dapat menyimpan ijazah ini di **dompet digital** (aplikasi) mereka sendiri. Saat melamar kerja, perusahaan dapat **memverifikasi keaslian ijazah** tersebut dalam hitungan detik **tanpa perlu menghubungi pihak kampus** secara manual berkat **teknologi Blockchain** yang menjamin data valid dan transparan.
+
+---
+
+**Apakah Anda ingin saya buatkan diagram alur (flowchart) sederhana mengenai cara kerja verifikasi dokumen ini?**
 
 ## 📑 Daftar Isi
 
