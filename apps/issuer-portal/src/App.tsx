@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import IssuerPage from './pages/IssuerPage';
+import PDDiktiPage from './pages/PDDiktiPage';
 import './App.css';
 
 function App() {
@@ -7,6 +8,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<IssuerPage />} />
+        <Route path="/pddikti" element={<PDDiktiPage />} />
       </Routes>
     </BrowserRouter>
   );

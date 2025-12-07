@@ -44,6 +44,28 @@ const HolderPage: React.FC = () => {
     }
   };
 
+  const getCredentialId = (vc: any): string => {
+    // KASUS 1: Format SD-VC (Yang Anda kirim sekarang)
+    // Signature ada di dalam credentialSubject.sdData.signature
+    if (vc.credentialSubject?.sdData?.signature) {
+      return vc.credentialSubject.sdData.signature;
+    }
+
+    // KASUS 2: Format Selective Disclosure Presentation (VP)
+    // Signature ada di root object (flat format)
+    if (vc.signature && vc.revealed) {
+      return vc.signature;
+    }
+
+    // KASUS 3: Format VC Standar W3C (Proof JWS)
+    if (vc.proof?.jws) {
+      return vc.proof.jws;
+    }
+
+    // Fallback: Return string kosong (akan dibuang oleh filter)
+    return "";
+  };
+
   // --- 4. LOGIC SYNC DENGAN DEDUPLIKASI ---
   const syncFromAgent = useCallback(async (isManual = false) => {
     setIsSyncing(true);
@@ -52,24 +74,26 @@ const HolderPage: React.FC = () => {
       const inboxData = await response.json();
       
       if (inboxData.length > 0) {
-        // Ambil content saja
-        const newVCs = inboxData.map((item: any) => item.content);
+        const incomingVCs = inboxData.map((item: any) => item.content);
         let addedCount = 0;
 
         setCredentials(prevCreds => {
-          // Filter Duplikat berdasarkan Signature
-          const currentSignatures = new Set(prevCreds.map(c => c.proof?.jws || "unknown"));
+          // Buat Daftar ID yang SUDAH ADA di dompet
+          const existingIds = new Set(prevCreds.map(c => getCredentialId(c)));
           
-          const uniqueNewVCs = newVCs.filter((vc: any) => {
-            // Filter Data Sampah (Dummy biasanya tidak punya proof.jws yang valid)
-            if (!vc.proof || !vc.proof.jws) return false;
+          const uniqueNewVCs = incomingVCs.filter((vc: any) => {
+            const id = getCredentialId(vc);
             
-            const sig = vc.proof.jws;
-            // Cegah duplikat signature yang sama
-            if (sig && !currentSignatures.has(sig)) {
-              return true; 
-            }
-            return false; 
+            // 1. Jika ID kosong (Data rusak/Format salah), tolak.
+            if (!id) return false;
+
+            // 2. Jika ID sudah ada di dompet, tolak (Duplikat).
+            if (existingIds.has(id)) return false;
+            
+            // 3. Jika lolos, simpan ID ini ke Set sementara 
+            // (untuk mencegah duplikat ganda dalam satu kali tarikan sync)
+            existingIds.add(id); 
+            return true;
           });
 
           addedCount = uniqueNewVCs.length;
@@ -79,18 +103,18 @@ const HolderPage: React.FC = () => {
             saveToWallet(updatedList);
             return updatedList;
           }
-          return prevCreds;
+          return prevCreds; // Tidak ada perubahan
         });
 
         if (isManual) {
-          if (addedCount > 0) alert(`✅ Berhasil menarik ${addedCount} dokumen baru!`);
-          else alert("Inbox sudah disinkronkan. Tidak ada dokumen baru.");
+          if (addedCount > 0) console.log(`✅ Berhasil menarik ${addedCount} dokumen baru!`);
+          else console.log("Inbox sudah disinkronkan. Tidak ada dokumen baru.");
         }
       } else if (isManual) {
-        alert("Inbox Agent kosong.");
+        console.log("Inbox Agent kosong.");
       }
     } catch (e) {
-      if (isManual) alert("Gagal konek Agent (Pastikan node server.js jalan).");
+      if (isManual) console.log("Gagal konek Agent (Pastikan node server.js jalan).");
     }
     setIsSyncing(false);
   }, []);

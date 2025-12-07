@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import RegistryArtifact from '../utils/SimpleDIDRegistry.json'; 
 
 // GANTI SESUAI ALAMAT SEPOLIA/ANVIL TERBARU
-const CONTRACT_ADDRESS = "0xdd8fbecc649b86c6228bdce59f1fa4b51f2f4942"; 
+const CONTRACT_ADDRESS = "0x1834da25E4525807c63FB80b7088f835c824c9cD"; 
 
 export const useBlockchain = () => {
   const [account, setAccount] = useState<string>("");

@@ -18,15 +18,30 @@ contract SimpleDIDRegistry {
         uint256 issuedAt;
         bool isRevoked;
         bool exists;
+        bool isValidated;
     }
 
-    address public admin;
+    address public kemendikbud; // kemendikbud
+    address public pddikti;
+
     mapping(address => DIDDocument) public dids;
     mapping(bytes32 => CredentialStatus) public credentials;
 
     event DIDRegistered(address indexed owner, string name);
+    event IssuerVerified(address indexed issuer);
     event CredentialAnchored(bytes32 indexed vcHash, address indexed issuer);
+    event CredentialValidated(bytes32 indexed vcHash);
     event CredentialRevoked(bytes32 indexed vcHash, string reason);
+
+    modifier onlyKemendikbud() {
+        require(msg.sender == kemendikbud, "Hanya Kemendikbud!");
+        _;
+    }
+
+    modifier onlyPDDikti() {
+        require(msg.sender == pddikti, "Hanya PDDikti!");
+        _;
+    }
 
     modifier onlyVerifiedIssuer() {
         require(dids[msg.sender].isVerified, "Hanya Kampus Terverifikasi yang boleh!");
@@ -34,8 +49,13 @@ contract SimpleDIDRegistry {
     }
 
     constructor() {
-        admin = msg.sender; // Deployer jadi Admin
+        kemendikbud = msg.sender; // Deployer jadi Admin
     }
+
+    function setPDDiktiAddress(address _pddiktiAddress) external onlyKemendikbud {
+        pddikti = _pddiktiAddress;
+    }
+
 
     // 1. DAFTAR DID
     function registerDID(string memory _didURI, string memory _name, string memory _endpoint) external {
@@ -51,12 +71,12 @@ contract SimpleDIDRegistry {
         emit DIDRegistered(msg.sender, _name);
     }
 
-    // 2. VERIFIKASI KAMPUS (Admin Only)
-    function verifyIssuer(address _issuer) external {
-        require(msg.sender == admin, "Bukan Admin");
+    // 2. Akreditasi Kampus (Memberi Centang Biru)
+    function verifyIssuer(address _issuer) external onlyKemendikbud {
         dids[_issuer].isVerified = true;
+        emit IssuerVerified(_issuer);
     }
-
+    
     // 3. CATAT IJAZAH (Anchoring)
     function issueCredential(bytes32 _vcHash) external onlyVerifiedIssuer {
         require(!credentials[_vcHash].exists, "Hash ini sudah ada!");
@@ -64,9 +84,18 @@ contract SimpleDIDRegistry {
             issuer: msg.sender,
             issuedAt: block.timestamp,
             isRevoked: false,
-            exists: true
+            exists: true,
+            isValidated: false
         });
         emit CredentialAnchored(_vcHash, msg.sender);
+    }
+
+    function validateCredential(bytes32 _vcHash) external onlyPDDikti {
+        require(credentials[_vcHash].exists, "Ijazah tidak ditemukan");
+        require(!credentials[_vcHash].isRevoked , "Ijazah sudah dicabut kampus");
+        
+        credentials[_vcHash].isValidated = true;
+        emit CredentialValidated(_vcHash);
     }
 
     // 4. CABUT IJAZAH (Revocation)
@@ -82,8 +111,13 @@ contract SimpleDIDRegistry {
         return (doc.active, doc.isVerified, doc.metadata, doc.didURI, doc.serviceEndpoint);
     }
 
-    function verifyCredentialStatus(bytes32 _vcHash) external view returns (bool exists, bool isRevoked, address issuer) {
+    function verifyCredentialStatus(bytes32 _vcHash) external view returns (
+        bool exists, 
+        bool isRevoked, 
+        bool isValidated,
+        address issuer
+    ) {
         CredentialStatus memory c = credentials[_vcHash];
-        return (c.exists, c.isRevoked, c.issuer);
+        return (c.exists, c.isRevoked, c.isValidated, c.issuer);
     }
 }

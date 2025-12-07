@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Wallet, School, QrCode, Copy, User, Loader } from 'lucide-react';
 import { Credential } from '../utils/constants';
 import { useHolder } from '../hooks/useHolder'; // Import Hook
+import { createSDPresentation } from '../utils/selectiveDisclosure';
 
 interface HolderWalletProps {
   credentials: Credential[];
@@ -12,6 +13,36 @@ const HolderWallet: React.FC<HolderWalletProps> = ({ credentials, account }) => 
   const { createVerifiablePresentation } = useHolder(); // Panggil Hook
   const [selectedVc, setSelectedVc] = useState<any>(null);
   const [isSigning, setIsSigning] = useState(false); // Loading state
+
+  const [showSelectModal, setShowSelectModal] = useState(false);
+  const [vcToPresent, setVcToPresent] = useState<any>(null);
+  const [selectedFields, setSelectedFields] = useState<string[]>([]);
+
+  const openPresentationModal = (vc: any) => {
+    setVcToPresent(vc);
+    // Ambil semua keys dari data mentah
+    const keys = Object.keys(vc.credentialSubject.sdData.rawValues);
+    setSelectedFields(keys); // Default pilih semua
+    setShowSelectModal(true);
+  };
+
+  // Toggle Checkbox
+  const toggleField = (field: string) => {
+    if (selectedFields.includes(field)) {
+      setSelectedFields(selectedFields.filter(f => f !== field));
+    } else {
+      setSelectedFields([...selectedFields, field]);
+    }
+  };
+
+  const handleGenerateVP = () => {
+    const vp = createSDPresentation(vcToPresent, selectedFields, `did:ethr:${account}`);
+    
+    // Copy ke clipboard
+    navigator.clipboard.writeText(JSON.stringify(vp, null, 2));
+    alert("✅ Selective Disclosure VP berhasil dibuat! (Data yang tidak dicentang telah disembunyikan)");
+    setShowSelectModal(false);
+  };
 
   // Fungsi COPY yang baru (Async Signing)
   const handleCopyVP = async (vc: any) => {
@@ -54,10 +85,6 @@ const HolderWallet: React.FC<HolderWalletProps> = ({ credentials, account }) => 
             <span className="text-slate-500">Total Kredensial</span>
             <span className="font-bold text-slate-800">{credentials.length}</span>
           </div>
-          {/* <div className="flex justify-between items-center text-sm mt-2">
-            <span className="text-slate-500">Blockchain Network</span>
-            <span className="font-bold text-blue-600">EduChain Mainnet</span>
-          </div> */}
         </div>
       </div>
 
@@ -122,40 +149,83 @@ const HolderWallet: React.FC<HolderWalletProps> = ({ credentials, account }) => 
                  
                  {/* TOMBOL SIGN VP */}
                  <button 
-                  onClick={() => handleCopyVP(vc)}
-                  disabled={isSigning}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
-                 >
-                   {isSigning ? <Loader className="animate-spin" size={16} /> : <Copy size={16} />}
-                   Generate VP
-                 </button>
+                    onClick={() => openPresentationModal(vc)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                  >
+                    <Copy size={16} /> Selective VP
+                  </button>
               </div>
             </div>
           )})
         )}
       </div>
 
-      {/* Modal Mockup for QR */}
       {selectedVc && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-center mb-4">Verifiable Presentation</h3>
-            <div className="bg-white p-4 border-2 border-slate-100 rounded-xl flex justify-center mb-4">
-               {/* Just a placeholder icon for QR */}
-               <QrCode size={150} className="text-slate-800" />
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          {/* Ubah max-w-sm jadi max-w-3xl agar lebar */}
+          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
+            
+            <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              📄 Raw Credential Data
+            </h3>
+            
+            {/* Area JSON dengan Scrollbar */}
+            <div className="flex-1 overflow-auto bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+              <pre className="text-xs font-mono text-slate-600 whitespace-pre-wrap break-all leading-relaxed">
+                {JSON.stringify(selectedVc, null, 2)}
+              </pre>
             </div>
-            <p className="text-xs text-center text-slate-500 mb-4 break-all">
-              {JSON.stringify(selectedVc).substring(0, 50)}...
-            </p>
-            <button 
-              onClick={() => setSelectedVc(null)}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium py-2 rounded-lg"
-            >
-              Tutup
-            </button>
+
+            <div className="flex justify-end">
+              <button 
+                onClick={() => setSelectedVc(null)}
+                className="bg-slate-800 hover:bg-slate-900 text-white font-medium py-2.5 px-6 rounded-lg transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* MODAL SELEKSI FIELD (Baru) */}
+        {showSelectModal && vcToPresent && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+              <h3 className="text-lg font-bold mb-2">Pilih Data untuk Dibuka</h3>
+              <p className="text-xs text-slate-500 mb-4">
+                Data yang tidak dicentang akan disembunyikan (Hashed) demi privasi.
+              </p>
+              
+              <div className="space-y-2 mb-6">
+                {Object.keys(vcToPresent.credentialSubject.sdData.rawValues).map(key => (
+                  <label key={key} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedFields.includes(key)}
+                      onChange={() => toggleField(key)}
+                      className="w-5 h-5 text-indigo-600 rounded"
+                    />
+                    <div>
+                      <p className="font-bold text-sm capitalize">{key}</p>
+                      <p className="text-xs text-slate-500 truncate w-48">
+                        {vcToPresent.credentialSubject.sdData.rawValues[key]}
+                      </p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <button 
+                onClick={handleGenerateVP}
+                className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition"
+              >
+                Generate & Copy VP
+              </button>
+              <button onClick={() => setShowSelectModal(false)} className="w-full mt-2 text-slate-500 py-2 text-sm">Batal</button>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

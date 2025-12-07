@@ -1,87 +1,27 @@
 import React, { useState } from 'react';
-import { Building2, ChevronRight, CheckCircle, XCircle, Shield } from 'lucide-react';
-import { BlockData } from '../utils/constants';
+import { Building2, ChevronRight, CheckCircle, XCircle, Shield, AlertTriangle } from 'lucide-react';
+import { useVerifier, VerificationResult } from '../hooks/useVerifier';
 
-interface VerifierPortalProps {
-  blockchain: BlockData[];
-}
-
-interface VerificationStep {
-  msg: string;
-  valid: boolean;
-}
-
-const VerifierPortal: React.FC<VerifierPortalProps> = ({ blockchain }) => {
+const VerifierPortal: React.FC = () => {
   const [inputJson, setInputJson] = useState('');
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'memverifikasi' | 'success' | 'invalid'>('idle');
-  const [steps, setSteps] = useState<VerificationStep[]>([]);
+  const [result, setResult] = useState<VerificationResult | null>(null);
+  
+  const { verifyCredential, isVerifying } = useVerifier();
 
-  const handleVerify = () => {
+  const handleVerifyClick = async () => {
     if (!inputJson) return;
-
-    setVerificationStatus('memverifikasi');
-    setSteps([]);
-
-    const sequence = [
-      { msg: "Format check (JSON Schema)", valid: true },
-      { msg: "memverifikasi Issuer DID Signature (Public Key)", valid: true },
-      { msg: "Checking Revocation Registry (Smart Contract)", valid: true },
-      { msg: "Matching Merkle Root Hash on Blockchain", valid: true },
-    ];
-
-    let currentStep = 0;
-
-    const interval = setInterval(() => {
-      if (currentStep >= sequence.length) {
-        clearInterval(interval);
-        try {
-          const data = JSON.parse(inputJson);
-          const onChain = blockchain.find(b => b.vcHash === data.hash);
-          
-          if (onChain && onChain.status === 'Active') {
-            setVerificationStatus('success');
-          } else {
-            setVerificationStatus('invalid');
-            setSteps(prev => [...prev, { msg: "Hash Mismatch: Data not found on ledger", valid: false }]);
-          }
-        } catch (e) {
-          setVerificationStatus('invalid');
-           setSteps(prev => [...prev, { msg: "Invalid JSON Format", valid: false }]);
-        }
-        return;
-      }
-
-      setSteps(prev => [...prev, sequence[currentStep]]);
-      currentStep++;
-    }, 800);
-  };
-
-  const loadSample = () => {
-    const sample = {
-      "id": "vc:uuid:1234",
-      "type": ["VerifiableCredential", "UniversityDegreeCredential"],
-      "issuer": "Universitas Indonesia",
-      "issuanceDate": "2024-01-15",
-      "credentialSubject": {
-        "name": "Budi Santoso",
-        "degree": "S.Kom - Teknik Informatika",
-        "gpa": "3.85"
-      },
-      "proof": {
-        "type": "EcdsaSecp256k1Signature2019",
-        "verificationMethod": "did:ethr:issuer#key-1",
-        "signatureValue": "0xabc..."
-      },
-      "hash": "0x123456789abc"
-    };
-    setInputJson(JSON.stringify(sample, null, 2));
-    setVerificationStatus('idle');
-    setSteps([]);
+    setResult(null); // Reset hasil lama
+    
+    // Panggil fungsi verifikasi asli
+    const res = await verifyCredential(inputJson);
+    setResult(res);
   };
 
   return (
-    <div className="max-w-3xl mx-auto animate-fade-in">
+    <div className="max-w-4xl mx-auto animate-fade-in pb-20">
+      
       <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        {/* Header Card */}
         <div className="bg-slate-50 p-6 border-b border-slate-200">
            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
              <Building2 className="text-blue-600"/>
@@ -95,85 +35,91 @@ const VerifierPortal: React.FC<VerifierPortalProps> = ({ blockchain }) => {
         <div className="p-6">
           <div className="mb-4">
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Presentasi yang Dapat Diverifikasi (Data JSON)
+              Presentasi yang Dapat Diverifikasi (VP JSON)
             </label>
-            <div className="relative">
-              <textarea 
+            <textarea 
                 className="w-full h-40 font-mono text-xs bg-slate-900 text-green-400 p-4 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder='Paste JSON VC disini...'
+                placeholder='Paste JSON Selective Disclosure VP disini...'
                 value={inputJson}
                 onChange={(e) => setInputJson(e.target.value)}
-              />
-              <button 
-                onClick={loadSample}
-                className="absolute top-2 right-2 text-xs bg-slate-700 text-white px-2 py-1 rounded hover:bg-slate-600"
-              >
-                Muat Sampel yang Valid
-              </button>
-            </div>
+            />
           </div>
 
           <button 
-            onClick={handleVerify}
-            disabled={verificationStatus === 'memverifikasi' || !inputJson}
+            onClick={handleVerifyClick}
+            disabled={isVerifying || !inputJson}
             className={`w-full py-3 rounded-lg font-bold text-lg transition-all flex justify-center items-center gap-2 ${
-              verificationStatus === 'memverifikasi' 
-                ? 'bg-slate-200 text-slate-500' 
+              isVerifying 
+                ? 'bg-slate-200 text-slate-500 cursor-not-allowed' 
                 : 'bg-green-600 hover:bg-green-700 text-white shadow-md'
             }`}
           >
-             {verificationStatus === 'memverifikasi' ? (
-               <>Pemrosesan Kriptografi...</>
-             ) : (
-               <>Verifikasi Kredensial Sekarang <ChevronRight/></>
-             )}
+              {isVerifying ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-slate-500"></div>
+                  Memverifikasi Blockchain & Kriptografi...
+                </>
+              ) : (
+                <>Verifikasi Kredensial Sekarang <ChevronRight/></>
+              )}
           </button>
 
-          {steps.length > 0 && (
-            <div className="mt-8 space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-200">
-              <h3 className="font-semibold text-slate-700 text-sm uppercase tracking-wide mb-3">Proses Verifikasi</h3>
-              {steps.map((step, idx) => (
-                <div key={idx} className="flex items-center gap-3 text-sm animate-fade-in-up">
-                   {step.valid ? (
-                     <CheckCircle size={18} className="text-green-500 flex-shrink-0" />
-                   ) : (
-                     <XCircle size={18} className="text-red-500 flex-shrink-0" />
-                   )}
-                   <span className={step.valid ? "text-slate-700" : "text-red-600 font-medium"}>
-                     {step.msg}
-                   </span>
+          {/* --- HASIL VERIFIKASI --- */}
+          {result && (
+            <div className={`mt-8 p-6 rounded-xl border-2 animate-scale-in ${result.isValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+              
+              {/* Header Hasil */}
+              <div className="flex items-start gap-4">
+                <div className={`p-3 rounded-full ${result.isValid ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                  {result.isValid ? <Shield size={32} /> : <XCircle size={32} />}
                 </div>
-              ))}
+                <div>
+                  <h3 className={`text-xl font-bold ${result.isValid ? 'text-green-800' : 'text-red-800'}`}>
+                    {result.isValid ? "Kredensial Valid & Terverifikasi" : "Verifikasi Gagal"}
+                  </h3>
+                  <p className={`text-sm mt-1 ${result.isValid ? 'text-green-700' : 'text-red-700'}`}>
+                    {result.message}
+                  </p>
+                </div>
+              </div>
+
+              {/* Detail Data (Hanya jika Valid) */}
+              {result.isValid && (
+                <div className="mt-6 space-y-4">
+                  
+                  {/* Status PDDikti */}
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border ${result.pddiktiStatus ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-yellow-50 border-yellow-200 text-yellow-700'}`}>
+                    {result.pddiktiStatus ? (
+                      <><CheckCircle size={16}/> LEGALISIR PDDIKTI: SUDAH</>
+                    ) : (
+                      <><AlertTriangle size={16}/> LEGALISIR PDDIKTI: BELUM (Pending)</>
+                    )}
+                  </div>
+
+                  <div className="border-t border-green-200 my-4"></div>
+
+                  <h4 className="font-bold text-green-800 text-sm uppercase tracking-wider mb-3">
+                    Data yang Diungkapkan (Selective Disclosure):
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {result.revealedData?.map((item: any, idx: number) => (
+                      <div key={idx} className="bg-white p-3 rounded border border-green-100 shadow-sm flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase font-bold">{item.key}</span>
+                        <span className="text-slate-800 font-medium font-mono text-sm break-all">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 text-xs text-slate-500 italic">
+                    *Data lain yang tidak ditampilkan di atas tetap terjaga privasinya namun telah diverifikasi integritasnya melalui hash.
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
-          {verificationStatus === 'success' && (
-             <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-4 animate-scale-in">
-               <div className="bg-green-100 p-2 rounded-full">
-                 <Shield className="text-green-600 h-8 w-8" />
-               </div>
-               <div>
-                 <h4 className="font-bold text-green-800 text-lg">Kredensial yang Valid</h4>
-                 <p className="text-green-700 text-sm mt-1">
-                   Dokumen ini asli, diterbitkan oleh Universitas Terdaftar, dan hash tercatat di Blockchain (Block #1024). Tidak ada status pencabutan (revocation).
-                 </p>
-               </div>
-             </div>
-          )}
-
-          {verificationStatus === 'invalid' && (
-             <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-4 animate-scale-in">
-               <div className="bg-red-100 p-2 rounded-full">
-                 <XCircle className="text-red-600 h-8 w-8" />
-               </div>
-               <div>
-                 <h4 className="font-bold text-red-800 text-lg">Kredensial Tidak Valid / Rusak</h4>
-                 <p className="text-red-700 text-sm mt-1">
-                   Dokumen ini gagal verifikasi. Hash tidak cocok dengan catatan blockchain atau format tanda tangan digital rusak.
-                 </p>
-               </div>
-             </div>
-          )}
         </div>
       </div>
     </div>

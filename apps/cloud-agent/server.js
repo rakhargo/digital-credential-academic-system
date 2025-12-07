@@ -3,45 +3,52 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const app = express();
-const PORT = 4000; // Port khusus Agent
+const PORT = 4000;
 
-// Middleware
-app.use(cors()); // Agar bisa diakses dari React (Port 3000/3001)
+app.use(cors());
 app.use(bodyParser.json());
 
-// DATABASE SEMENTARA (RAM)
-// Di real case, ini database terenkripsi
-let inbox = [];
+// DATABASE SEMENTARA
+let studentInbox = [];
+let pddiktiInbox = []; // <--- DATABASE PELAPORAN KAMPUS
 
-// 1. ENDPOINT PENERIMA (Dipanggil oleh Issuer)
-// Sesuai dengan didDocument.serviceEndpoint
+// --- API MAHASISWA ---
 app.post('/api/inbox', (req, res) => {
+    // ... (Kode lama tetap sama) ...
     const credential = req.body;
-    console.log("📩 [AGENT] Menerima Ijazah Baru!");
-    console.log("   -> Issuer:", credential.issuer);
-
-    // Simpan ke inbox
-    inbox.push({
-        id: Date.now(),
-        receivedAt: new Date().toISOString(),
-        content: credential
-    });
-
-    res.status(200).json({ message: "Diterima oleh Agent Mahasiswa" });
+    studentInbox.push({ content: credential });
+    res.json({ status: "ok" });
 });
 
-// 2. ENDPOINT PENGAMBILAN (Dipanggil oleh Holder React)
 app.get('/api/credentials', (req, res) => {
-    res.json(inbox);
+    res.json(studentInbox);
 });
 
-// 3. ENDPOINT CLEAR (Opsional, untuk demo ulang)
-app.delete('/api/inbox', (req, res) => {
-    inbox = [];
-    res.json({ message: "Inbox dibersihkan" });
+// --- API BARU: PDDIKTI (PELAPORAN) ---
+// 1. Kampus Lapor Data
+app.post('/api/pddikti/report', (req, res) => {
+    const reportData = req.body; // Isinya: { vcHash, credentialJson, issuer }
+    console.log("🏛️ [PDDIKTI] Menerima Laporan Ijazah Baru:", reportData.vcHash);
+    
+    pddiktiInbox.push({
+        ...reportData,
+        reportedAt: new Date().toISOString()
+    });
+    res.json({ status: "reported" });
+});
+
+// 2. PDDikti Baca Laporan
+app.get('/api/pddikti/reports', (req, res) => {
+    res.json(pddiktiInbox);
+});
+
+// 3. Hapus Laporan (Setelah divalidasi)
+app.post('/api/pddikti/clear', (req, res) => {
+    const { hash } = req.body;
+    pddiktiInbox = pddiktiInbox.filter(item => item.vcHash !== hash);
+    res.json({ status: "cleared" });
 });
 
 app.listen(PORT, () => {
-    console.log(`🤖 Personal Cloud Agent berjalan di http://localhost:${PORT}`);
-    console.log(`   Endpoint aktif: http://localhost:${PORT}/api/inbox`);
+    console.log(`🤖 Server Agent + PDDikti Database running on port ${PORT}`);
 });

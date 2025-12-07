@@ -6,6 +6,7 @@ import IssuerPanel from '../components/IssuerPanel';
 // import BlockExplorer from '../components/BlockExplorer';
 import { useBlockchain } from '../hooks/useBlockchain';
 import { BlockData, Credential, FormData } from '../utils/constants';
+import { createSDPayload } from '../utils/selectiveDisclosure';
 
 const IssuerPage: React.FC = () => {
   // Panggil Hook Blockchain
@@ -34,27 +35,21 @@ const IssuerPage: React.FC = () => {
   const handleIssueCredential = async (formData: FormData) => {
     if (!account) return alert("Konek wallet dulu!");
     
-    // 1. Buat Hash untuk Blockchain
-    const dataString = JSON.stringify(formData);
-    const vcHash = ethers.keccak256(ethers.toUtf8Bytes(dataString));
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    // 1. BUAT SELECTIVE DISCLOSURE PAYLOAD
+    // Ini akan memicu MetaMask untuk Sign Message (List of Hashes)
+    const sdData = await createSDPayload(formData, signer);
     
-    // 2. Catat di Blockchain (Anchoring) - MetaMask Pop-up 1
+    // 2. Buat Hash Root untuk Blockchain (Anchoring)
+    // Kita pakai signature-nya sebagai unik ID untuk di-hash
+    const vcHash = ethers.keccak256(ethers.toUtf8Bytes(sdData.signature));
+    
+    // 3. Catat di Blockchain (Anchoring)
     const txHash = await issueCredentialOnChain(vcHash);
 
     if (txHash) {
-      // Update Explorer Lokal
-      const newBlock: BlockData = {
-        blockId: blockchain.length + 100,
-        txHash: txHash,
-        vcHash: vcHash,
-        did: `did:ethr:${account}`,
-        timestamp: new Date().toISOString(),
-        status: "Anchored"
-      };
-      setBlockchain([newBlock, ...blockchain]);
-
-      // === PERBAIKAN UTAMA DISINI ===
-      
       // 3. Signing VC agar Unik (MetaMask Pop-up 2)
       // Kita sign hash-nya saja biar cepat
       const provider = new ethers.BrowserProvider(window.ethereum);
@@ -72,18 +67,32 @@ const IssuerPage: React.FC = () => {
       // 4. Siapkan Data VC dengan Signature Unik
       const vcPayload = {
         "@context": ["https://www.w3.org/2018/credentials/v1"],
-        "type": ["VerifiableCredential"],
+        "type": ["VerifiableCredential", "SelectiveDisclosureCredential"],
         "issuer": `did:ethr:${account}`,
         "issuanceDate": new Date().toISOString(),
-        "credentialSubject": { ...formData },
-        "proof": { 
-            "type": "EthereumPersonalSignature2019",
-            "jws": signature
-        } 
+        "credentialSubject": {
+            id: `did:ethr:${formData.address}`, // (Target DID)
+            sdData: sdData // <--- Data Salt & Hash masuk sini
+        }
       };
 
+      try {
+          await fetch('http://localhost:4000/api/pddikti/report', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  vcHash: vcHash,           // Kunci pencarian
+                  credential: vcPayload,    // Data lengkap untuk dibaca admin
+                  issuer: account
+              })
+          });
+          console.log("✅ Laporan terkirim ke PDDikti");
+      } catch (e) {
+          console.error("Gagal lapor PDDikti");
+      }
+
       // 5. LOGIKA PENGIRIMAN (Sama seperti sebelumnya)
-      const targetAddress = formData.nim; 
+      const targetAddress = formData.address; 
 
       if (ethers.isAddress(targetAddress)) {
           alert(`Mencari Service Endpoint untuk ${targetAddress}...`);
@@ -271,8 +280,6 @@ const IssuerPage: React.FC = () => {
             <p className="text-slate-400">Silakan hubungi Admin untuk proses verifikasi manual.</p>
           </div>
         )}
-
-        {/* HAPUS KOMPONEN BLOCK EXPLORER DI SINI */}
         
       </main>
     </div>

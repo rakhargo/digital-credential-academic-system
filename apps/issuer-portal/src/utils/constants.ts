@@ -70,4 +70,5 @@ export interface FormData {
   program: string;
   gpa: string;
   graduationDate: string;
+  address: string;
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import RegistryArtifact from '../utils/SimpleDIDRegistry.json'; 
 
-const CONTRACT_ADDRESS = "0xDd8fbECC649B86c6228BDCe59F1FA4B51F2F4942"; 
+const CONTRACT_ADDRESS = "0x1834da25E4525807c63FB80b7088f835c824c9cD"; 
 
 export const useHolder = () => {
   const [account, setAccount] = useState<string>("");

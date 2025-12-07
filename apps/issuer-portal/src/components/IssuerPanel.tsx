@@ -11,6 +11,7 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue, issuerName }) => {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     nim: '',
+    address: '',
     program: '',
     gpa: '',
     graduationDate: new Date().toISOString().split('T')[0]
@@ -22,7 +23,7 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue, issuerName }) => {
     setIsProcessing(true);
     await onIssue(formData);
     setIsProcessing(false);
-    setFormData({ name: '', nim: '', program: '', gpa: '', graduationDate: '' });
+    setFormData({ name: '', nim: '', program: '', gpa: '', graduationDate: new Date().toISOString().split('T')[0], address: '' }); // Reset form
   };
 
   return (
@@ -64,16 +65,14 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue, issuerName }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Program Studi</label>
-              <select 
+              <input 
+                required
+                type="text" 
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Ex: Ilmu Komputer"
                 value={formData.program}
                 onChange={(e) => setFormData({...formData, program: e.target.value})}
-              >
-                <option>Teknik Informatika</option>
-                <option>Sistem Informasi</option>
-                <option>Manajemen Bisnis</option>
-                <option>Hukum</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">IPK Akhir</label>
@@ -86,6 +85,17 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue, issuerName }) => {
                 placeholder="Ex: 3.85"
                 value={formData.gpa}
                 onChange={(e) => setFormData({...formData, gpa: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Address Mahasiswa</label>
+              <input 
+                required
+                type="text" 
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Ex: 0x..."
+                value={formData.address}
+                onChange={(e) => setFormData({...formData, address: e.target.value})}
               />
             </div>
           </div>
