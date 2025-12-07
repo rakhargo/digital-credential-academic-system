@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ethers } from 'ethers';
-import { Wallet, ShieldCheck, ArrowRight, RefreshCw } from 'lucide-react';
+import { Wallet, ShieldCheck, ArrowRight, Building2, Globe } from 'lucide-react';
 import IssuerPanel from '../components/IssuerPanel';
-import BlockExplorer from '../components/BlockExplorer';
+// import BlockExplorer from '../components/BlockExplorer';
 import { useBlockchain } from '../hooks/useBlockchain';
 import { BlockData, Credential, FormData } from '../utils/constants';
 
@@ -11,16 +11,18 @@ const IssuerPage: React.FC = () => {
   // Panggil Hook Blockchain
   const { 
     account, 
-    isLoading, // <--- PENTING
+    isLoading,
     connectWallet, 
-    disconnectWallet, // <--- PENTING
     isVerified, isActive,
+    issuerName,
     issueCredentialOnChain, registerCampus, resolveHolder 
   } = useBlockchain();
   
   const [blockchain, setBlockchain] = useState<BlockData[]>([]);
   const [issuedCredentials, setIssuedCredentials] = useState<Credential[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [regName, setRegName] = useState("");
+  const [regEndpoint, setRegEndpoint] = useState("");
 
   // --- LOGIKA TOMBOL CONNECT ---
   const handleConnect = async () => {
@@ -180,85 +182,98 @@ const IssuerPage: React.FC = () => {
   // --- TAMPILAN 2: SUDAH KONEK ---
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
-      <main className="max-w-6xl mx-auto p-6 mt-6">
+      <main className="max-w-5xl mx-auto p-6 mt-6">
         
-        <div className="space-y-4 mb-8">
-          <div className="bg-gradient-to-r from-blue-600 to-violet-600 text-white p-10 rounded-xl shadow-2xl animate-fade-in">
-            
-            {/* Bagian Header: Judul & Info Wallet */}
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-4xl font-extrabold mb-2">Issuer Dashboard</h1>
-                <p className="text-blue-100">Portal Manajemen Kredensial Akademik</p>
-              </div>
-              
-              {/* STATUS WALLET (Pojok Kanan Atas) */}
-              <div className="text-right">
-                <div className="text-xs text-blue-200 mb-1">Connected Wallet</div>
-                <div className="bg-white/20 px-3 py-1 rounded-lg font-mono text-sm border border-white/10">
-                  {account.substring(0,6)}...{account.substring(38)}
-                </div>
-              </div>
-            </div>
-
-            {/* STATUS VERIFIKASI */}
-            <div className="flex items-center gap-4 mt-8">
-              <div className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${isVerified ? "bg-green-500 shadow-lg shadow-green-500/30" : "bg-red-500 shadow-lg shadow-red-500/30"}`}>
-                <ShieldCheck size={18}/>
-                {isVerified ? "TERVERIFIKASI" : "UNVERIFIED"}
-              </div>
-              
-              {/* Pesan Status Dinamis */}
-              {!isVerified && isActive && (
-                <span className="text-sm text-yellow-200 animate-pulse bg-yellow-900/30 px-3 py-1 rounded-full border border-yellow-500/30">
-                  ⏳ Menunggu persetujuan admin (Pending Approval).
-                </span>
-              )}
-            </div>
-            
-            {/* LOGIKA TOMBOL BARU */}
-            {/* Hanya tampilkan tombol Register jika BELUM Register (isActive false) */}
-            {!isActive && !isVerified && account && (
-              <div className="mt-6 bg-white/10 border border-white/20 p-4 rounded-lg backdrop-blur-sm">
-                <p className="mb-3 text-white font-medium">Langkah 1: Daftarkan Identitas Kampus</p>
-                <button 
-                  onClick={() => registerCampus("Universitas Indonesia")}
-                  className="bg-yellow-400 text-black px-6 py-2 rounded-full font-bold hover:bg-yellow-300 shadow-lg transition-all"
-                >
-                  Register DID on Blockchain
-                </button>
-              </div>
-            )}
-
-            {/* Jika Sudah Register TAPI Belum Verified -> Tampilkan Tombol Cheat Admin */}
-            {isActive && !isVerified && (
-               <div className="mt-6 bg-blue-500/20 border border-blue-400/50 p-4 rounded-lg backdrop-blur-sm">
-                <p className="mb-2 text-blue-100 text-sm">
-                  🔒 Akun Anda sudah terdaftar di Blockchain, tetapi belum diverifikasi oleh Kemendikbud (Admin).
-                </p>
-                <p className="text-xs text-slate-400 mb-3">
-                  (Karena ini demo lokal, Anda bisa simulasi jadi Admin untuk verifikasi diri sendiri)
-                </p>
-                
-                {/* Kita butuh fungsi verifySelf di hook nanti, atau sementara manual dulu */}
-                <button
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-500"
-                  onClick={() => alert("Fitur simulasi admin belum dipasang. Minta admin verify manual lewat script Python/Cast.")}
-                >
-                  👑 Simulasi: Self-Verify (Admin Cheat)
-                </button>
-              </div>
-            )}
-
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-800">
+              {isActive ? issuerName : "Pendaftaran Institusi"}
+            </h1>
+            <p className="text-slate-500">Wallet: {account}</p>
           </div>
-          
-          {/* Panel Form HANYA muncul jika Verified */}
-          {isVerified ? (
-            <IssuerPanel onIssue={handleIssueCredential} />
-          ) : null}
+          {/* <button onClick={disconnectWallet} className="text-sm text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg border border-red-100 transition">
+            Disconnect
+          </button> */}
         </div>
 
-        <BlockExplorer data={blockchain} />
+        {/* STATUS BAR */}
+        <div className={`p-4 rounded-xl mb-8 flex items-center gap-3 ${isVerified ? "bg-green-100 border border-green-200 text-green-800" : "bg-yellow-50 border border-yellow-200 text-yellow-800"}`}>
+          <ShieldCheck size={24} />
+          <div>
+            <p className="font-bold">{isVerified ? "STATUS: TERVERIFIKASI" : "STATUS: UNVERIFIED"}</p>
+            <p className="text-xs opacity-80">
+              {isVerified 
+                ? "Institusi Anda berhak menerbitkan ijazah sah di Blockchain." 
+                : "Menunggu verifikasi admin (Kemendikbud) untuk mengaktifkan fitur penerbitan."}
+            </p>
+          </div>
+        </div>
+
+        {/* --- FORM REGISTRASI (Jika Belum Daftar) --- */}
+        {!isActive && (
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 animate-fade-in">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <Building2 className="text-blue-600" /> 
+              Form Registrasi DID
+            </h2>
+            
+            <div className="space-y-4 max-w-lg">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nama Institusi</label>
+                <input 
+                  type="text" 
+                  className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Contoh: Universitas Indonesia"
+                  value={regName}
+                  onChange={(e) => setRegName(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Service Endpoint (Optional)</label>
+                <div className="flex items-center gap-2">
+                  <Globe size={18} className="text-slate-400" />
+                  <input 
+                    type="text" 
+                    className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50"
+                    placeholder="URL Server Penerima"
+                    value={regEndpoint}
+                    onChange={(e) => setRegEndpoint(e.target.value)}
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1">*URL untuk menerima pesan DIDComm (Default: Local Agent)</p>
+              </div>
+
+              <button 
+                onClick={() => registerCampus(regName, regEndpoint)}
+                disabled={!regName}
+                className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Daftarkan ke Blockchain
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PANEL INPUT (Hanya Muncul Jika Sudah Register & Verified) */}
+        {isActive && isVerified && (
+          <IssuerPanel 
+            onIssue={handleIssueCredential} 
+            issuerName={issuerName} // Kirim nama kampus ke Panel
+          />
+        )}
+
+        {/* Pesan Pending (Sudah Daftar tapi Belum Verified) */}
+        {isActive && !isVerified && (
+          <div className="text-center p-12 bg-white rounded-2xl border border-dashed border-slate-300">
+            <p className="text-slate-500 text-lg">⏳ Data pendaftaran telah dikirim.</p>
+            <p className="text-slate-400">Silakan hubungi Admin untuk proses verifikasi manual.</p>
+          </div>
+        )}
+
+        {/* HAPUS KOMPONEN BLOCK EXPLORER DI SINI */}
+        
       </main>
     </div>
   );

@@ -11,6 +11,7 @@ export const useBlockchain = () => {
   
   const [isActive, setIsActive] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [issuerName, setIssuerName] = useState("");
   const [isLoading, setIsLoading] = useState(true); // Biar gak kedip saat refresh
 
   // --- FUNGSI RESET / LOGOUT ---
@@ -37,6 +38,7 @@ export const useBlockchain = () => {
         const status = await _contract.resolveDID(userAddr);
         setIsActive(status[0]);
         setIsVerified(status[1]); 
+        setIssuerName(status[2]);
       } catch (e) {
         console.log("Issuer belum terdaftar di smart contract");
       }
@@ -114,10 +116,10 @@ export const useBlockchain = () => {
   }, [disconnectWallet]);
 
   // --- TRANSAKSI ---
-  const registerCampus = async (name: string) => {
+  const registerCampus = async (name: string, endpoint: string) => {
     if (!contract) return;
     try {
-      const tx = await contract.registerDID(`did:ethr:${account}`, name, "");
+      const tx = await contract.registerDID(`did:ethr:${account}`, name, endpoint);
       await tx.wait();
       alert("✅ Registrasi Berhasil! Refresh halaman.");
       window.location.reload();
@@ -159,7 +161,8 @@ export const useBlockchain = () => {
     connectWallet, 
     disconnectWallet, // Export fungsi logout
     isActive, 
-    isVerified, 
+    isVerified,
+    issuerName,
     registerCampus, 
     issueCredentialOnChain, 
     resolveHolder 

@@ -4,13 +4,14 @@ import { FormData } from '../utils/constants';
 
 interface IssuerPanelProps {
   onIssue: (formData: FormData) => void;
+  issuerName: string;
 }
 
-const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue }) => {
+const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue, issuerName }) => {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     nim: '',
-    program: 'Teknik Informatika',
+    program: '',
     gpa: '',
     graduationDate: new Date().toISOString().split('T')[0]
   });
@@ -19,12 +20,9 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    
-    // Langsung panggil fungsi parent (yang akan memicu MetaMask)
     await onIssue(formData);
-    
     setIsProcessing(false);
-    setFormData({ name: '', nim: '', program: 'Teknik Informatika', gpa: '', graduationDate: '' });
+    setFormData({ name: '', nim: '', program: '', gpa: '', graduationDate: '' });
   };
 
   return (
@@ -35,8 +33,8 @@ const IssuerPanel: React.FC<IssuerPanelProps> = ({ onIssue }) => {
             <School size={24} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Universitas Dashboard</h2>
-            <p className="text-sm text-slate-500">DID: did:ethr:0x529...92a (Issuer)</p>
+            <h2 className="text-lg font-bold text-slate-800">{issuerName || "Institusi Akademik"}</h2>
+            <p className="text-sm text-slate-500">Authorized Issuer Dashboard</p>
           </div>
         </div>
 
